@@ -35,7 +35,7 @@ from braket.pulse.ast.qasm_parser import ast_to_qasm
 from braket.pulse.ast.qasm_transformer import _IRQASMTransformer
 from braket.pulse.frame import Frame
 from braket.pulse.pulse_sequence_trace import PulseSequenceTrace
-from braket.pulse.waveforms import Waveform
+from braket.pulse.waveforms import Waveform, WaveformDict
 
 
 class PulseSequence:
@@ -48,8 +48,16 @@ class PulseSequence:
         self._capture_v0_count = 0
         self._program = Program(simplify_constants=False)
         self._frames = {}
-        self._waveforms = {}
+        self._waveforms = WaveformDict({}, self)
         self._free_parameters = set()
+
+    @property
+    def waveform(self):
+        return self._waveforms
+
+    @waveform.setter
+    def waveform(self, value):
+        self._waveforms = value
 
     def to_time_trace(self) -> PulseSequenceTrace:
         """Generate an approximate trace of the amplitude, frequency, phase for each frame
@@ -256,6 +264,21 @@ class PulseSequence:
         self._program.function_call("capture_v0", [frame])
         self._capture_v0_count += 1
         self._frames[frame.id] = frame
+        return self
+
+    def update_waveform(self, waveform_name: str, **kwargs) -> PulseSequence:
+        assert waveform_name in self._waveforms
+        for attrs in kwargs:
+            setattr(self._waveforms[waveform_name], attrs, kwargs[attrs])
+            oqpy_waveform_var = self._program.undeclared_vars[waveform_name]
+            type_ = (
+                ast.DurationType()
+                if isinstance(oqpy_waveform_var.init_expression.args[attrs], OQDurationLiteral)
+                else ast.FloatType()
+            )
+            oqpy_waveform_var.init_expression.args[attrs] = self._format_parameter_ast(
+                kwargs[attrs], type_
+            )
         return self
 
     def make_bound_pulse_sequence(self, param_values: Dict[str, float]) -> PulseSequence:
