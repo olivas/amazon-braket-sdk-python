@@ -17,7 +17,10 @@ import random
 import string
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from typing import Any, Dict, List, Optional, Union
+from typing import TYPE_CHECKING, Any, Dict, List, Optional, Union
+
+if TYPE_CHECKING:
+    from braket.pulse.pulse_sequence import PulseSequence
 
 import numpy as np
 import openpulse.ast as ast
@@ -33,10 +36,19 @@ from braket.parametric.parameterizable import Parameterizable
 
 
 class WaveformDict(dict):
-    def __init__(self, wf_dict: Dict, pulse_sequence):
-        for wf in wf_dict.values():
-            wf._pulse_sequence = pulse_sequence
-        super().__init__(wf_dict)
+    """
+    A dict of waveforms.
+
+    Note:
+        WaveformDict binds a pulse sequence to each waveform that is
+            added to the dict. It serves as back reference when a
+            waveform is modified so the OQpy object is also updated.
+    """
+
+    def __init__(self, waveform_dict: Dict, pulse_sequence: PulseSequence):
+        for waveform in waveform_dict.values():
+            waveform._pulse_sequence = pulse_sequence
+        super().__init__(waveform_dict)
         self._pulse_sequence = pulse_sequence
 
     def __setitem__(self, key: str, value: Waveform):
