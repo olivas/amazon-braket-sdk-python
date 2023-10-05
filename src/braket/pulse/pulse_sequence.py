@@ -272,30 +272,6 @@ class PulseSequence:
         self._frames[frame.id] = frame
         return self
 
-    def update_waveform(self, waveform_name: str, **kwargs) -> PulseSequence:
-        """
-        Updates the waveform dict.
-
-        Args:
-            waveform_name (str): The name of the waveform.
-
-        Returns:
-            PulseSequence: self, with the waveform updated.
-        """
-        assert waveform_name in self._waveforms
-        for attrs in kwargs:
-            setattr(self._waveforms[waveform_name], attrs, kwargs[attrs])
-            oqpy_waveform_var = self._program.undeclared_vars[waveform_name]
-            type_ = (
-                ast.DurationType()
-                if isinstance(oqpy_waveform_var.init_expression.args[attrs], OQDurationLiteral)
-                else ast.FloatType()
-            )
-            oqpy_waveform_var.init_expression.args[attrs] = self._format_parameter_ast(
-                kwargs[attrs], type_
-            )
-        return self
-
     def make_bound_pulse_sequence(self, param_values: Dict[str, float]) -> PulseSequence:
         """
         Binds FreeParameters based upon their name and values passed in. If parameters
